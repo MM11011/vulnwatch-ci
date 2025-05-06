@@ -18,3 +18,9 @@ venv/
 
 # Data
 backend/data/findings.json
+
+# Certificates & Auth
+*.key
+*.crt
+.htpasswd
+
