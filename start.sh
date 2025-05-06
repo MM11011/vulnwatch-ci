@@ -1,32 +1,40 @@
 #!/bin/bash
 
-PROJECT_DIR="/Users/mmankoff/Projects/vulnwatch-ci"
-VENV_DIR="$PROJECT_DIR/venv"
+# Exit immediately if a command exits with a non-zero status.
+set -e
 
-# Tab 1: Start NGINX with sudo — requires password
-osascript <<EOF
-tell application "Terminal"
-    activate
-    do script "echo 'Starting NGINX...'; sudo nginx -s stop; sudo nginx"
-end tell
-EOF
+echo "🔄 Starting VulnWatch CI..."
 
-# Wait for user to enter sudo password and NGINX to start
-echo "Waiting 7 seconds for NGINX to start..."
-sleep 7
+# Step 1: Activate virtual environment
+echo "✅ Activating virtual environment..."
+source venv/bin/activate
 
-# Tab 2: Run Flask backend
-osascript <<EOF
-tell application "Terminal"
-    activate
-    do script "cd $PROJECT_DIR && source $VENV_DIR/bin/activate && PYTHONPATH=. python backend/app.py"
-end tell
-EOF
+# Step 2: Start or restart Nginx
+echo "🌀 Restarting Nginx..."
+sudo nginx -s stop 2>/dev/null || true
+sudo nginx
 
-# Tab 3: Tail logs
-osascript <<EOF
-tell application "Terminal"
-    activate
-    do script "cd $PROJECT_DIR && tail -f backend/logs/vulnwatch.log"
-end tell
-EOF
+# Step 3: Start Flask backend
+echo "🚀 Starting Flask backend..."
+cd backend
+python app.py &
+BACKEND_PID=$!
+cd ..
+
+# Step 4: Start React frontend (Vite)
+echo "🌐 Starting React frontend (Vite)..."
+cd frontend
+npm run dev &
+FRONTEND_PID=$!
+cd ..
+
+# Step 5: Output access URLs
+echo ""
+echo "🎯 VulnWatch CI is running!"
+echo "📊 Frontend:  http://localhost:5173"
+echo "📡 Backend:   http://127.0.0.1:5000/api/results"
+echo ""
+echo "🛑 To stop the app:"
+echo "   - Kill backend with: kill $BACKEND_PID"
+echo "   - Kill frontend with: kill $FRONTEND_PID"
+echo "   - Stop Nginx with: sudo nginx -s stop"
